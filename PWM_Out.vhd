@@ -55,7 +55,7 @@ signal compare   : unsigned(8 downto 0) := (others => '0');
 signal pwm_val : std_logic := '1';
 begin
 pwm_out <= pwm_val;
-    process
+    process -- used to control output based on counter and compare values
     begin
         wait until rising_edge(clk);
             if enable = '1' then
@@ -68,7 +68,7 @@ pwm_out <= pwm_val;
                 pwm_val <= '0';
             end if;
     end process;
-    process
+    process -- process for controlling the counting behaviour for Fast PWM or phase correct PWM
     begin
         wait until rising_edge(clk);
             if enable = '1' then

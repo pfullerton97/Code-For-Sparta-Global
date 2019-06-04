@@ -75,7 +75,8 @@ signal fb_stage         : std_logic             := '0';
 
 begin
 result <= y0;
-process
+process -- implementation of a generic 2nd order IIR digital filter
+-- equation follows form y0 = x0*n0 + x1*n1 + x2*n2 - y1*d1 - y2*d2
 begin
     wait until rising_edge(clk);
         case current_state is 
@@ -86,6 +87,7 @@ begin
                     current_state <= current_state;
                 end if;
             when init =>
+				-- reset values and shift input and output registers
                 x2 <= x1;
                 x1 <= x0;
                 x0 <= sample;
@@ -163,7 +165,7 @@ begin
         end case;
 end process;
 
-process
+process -- this process multiplies the two values in the input registers then on the next clock cycle the result is added to the accumulator 
 begin
     wait until rising_edge(clk);
         if mul_reset = '0' then

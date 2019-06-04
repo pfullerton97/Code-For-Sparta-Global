@@ -55,7 +55,7 @@ aud_sd  <= pwm_sd;
 ck_io0  <= pwm_out;
 --led(0)  <= btn(0);
 --led(1)  <= btn(1);
-
+	--instantiate and wire up the SPI interface for microphone
     pmod_mic: entity WORK.pmodmicrefcomp
     port map
     (
@@ -68,7 +68,7 @@ ck_io0  <= pwm_out;
         START   =>  pmod_start,  --input
         DONE    =>  pmod_done    --output
     );
-    
+    --instantiate and wire up the PWM output module
     pwm_wave:entity WORK.PWM_Out
     port map
     (
@@ -79,7 +79,7 @@ ck_io0  <= pwm_out;
         mode => pwm_mode
     );
 
-      process
+    process -- process used to drive inputs of SPI interface and recieve the outputs
     begin
         wait until rising_edge(clk);
             case pmod_state is
@@ -107,29 +107,34 @@ ck_io0  <= pwm_out;
                     pmod_state <= start;
              end case;
     end process;
-    process
+    process -- process for implementing a fixed volume control used fixed point binary maths
     begin
         wait until rising_edge(clk);
             case filter_state is
                 when idle =>
                     if new_sample = '1' then
+					-- go to next stage if there is a new sample
                         filter_state <= strip_bias;
                     else 
+					-- else stay in idle stage
                         filter_state <= filter_state;
                     end if;
                 when strip_bias =>
+				-- optional step if the DC bias should be removed
                     filter_samp <= sample;
                     filter_state <= apply_gain;
                 when apply_gain =>
+					--apply gain facotr
                     mul_res <= filter_samp*gain;
                     filter_state <= shift;
                 when shift =>
+					--shift result to account for fixed point offset
                     final_result <= mul_res(35 downto 23);
                     filter_state <= idle;
             end case;
     end process;
     
-    process
+    process --process to select if raw or processed samples should be output
     begin
         wait until rising_edge(clk);
             if sw = "00" then
@@ -143,14 +148,14 @@ ck_io0  <= pwm_out;
                 pwm_comp <= unsigned(pmod_data(11 downto 3));
             end if;
     end process;
-    process
+    process-- process to control the gain value with external buttons
     begin
     wait until rising_edge(clk);
         if btn(0) = '1' and btn(1) = '0' then
-            if counter(25) = '1' then
+            if counter(25) = '1' then -- delay for debounce purposes
                 led(0) <= '1';
                 if gain(23) = '0' then
-                    gain <= gain + inc_val;
+                    gain <= gain + inc_val; -- increase gain
                 end if;
                 counter <= (others => '0');
             else
@@ -158,7 +163,7 @@ ck_io0  <= pwm_out;
             end if;
             led(1) <= '0';
         elsif btn(1) = '1' and btn(0) = '0' then
-            if counter(25) = '1' then
+            if counter(25) = '1' then -- delay for debounce purposes
                 led(1) <= '1';
                 if gain > inc_val then
                     gain <= gain - inc_val;
